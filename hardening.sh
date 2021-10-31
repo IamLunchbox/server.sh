@@ -9,7 +9,7 @@ compat_check() {
 		printf "\n${BRed}Please use this script not as root, this will place, \
 configuration files at the wrong place."
 		exit 1
-	elif [[ -z $(uname -a | grep -i "ubuntu") ]] || elif [[ -z $(uname -a | grep -i "debian") ]]; then
+	elif [[ -z $(uname -a | grep -i "ubuntu") ]] || [[ -z $(uname -a | grep -i "debian") ]]; then
 		printf "\n${BRed}This script was only runs on for Debian and Ubuntu.${NC}\n"
 		exit 2
 	fi
@@ -170,7 +170,7 @@ secure_mount() {
 			printf "${BRed}Could not set alias mount=\"mount -o noexec,nosuid\" since ${SHELL} is not supported!\n${NC}"
 			;;
 	esac
-	if [[ ! $(systemctl status udisks2.service | grep "Loaded: masked (Reason: Unit udisks2.service is masked.)" )]]; then
+	if [[ ! $(systemctl status udisks2.service | grep "Loaded: masked (Reason: Unit udisks2.service is masked.)") ]]; then
 		printf "${Notiz}Disabling udisks2.service. This will disable any automounting - even using nautilus!\n${NC}"
 		sudo systemctl stop udisks2.service
 		sudo systemctl mask udisks2.service
@@ -256,7 +256,7 @@ enforce_for_root"
 usage="${scriptname} server|desktop|help\n
 A script to harden a linux system. There are no other options yet.
 "
-usage_short="${scriptname} run|help
+usage_short="${scriptname} server|desktop|help
 "
 
 if [[ $# -ne 1 ]]; then
@@ -289,8 +289,8 @@ case ${command} in
 	secure_mount
 	misc_hardening
 	;;
+
 	*)
 		printf "${usage}"
 	;;
 esac
-shift
