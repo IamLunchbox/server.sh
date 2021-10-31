@@ -6,15 +6,19 @@ set -e -u -o pipefail
 
 compat_check() {
 	if [[ $UID == 0 ]]; then
-		printf "\n${BRed}Please use this script not as root, this will place, \
+		printf "${BRed}Please use this script not as root, this will set \
 configuration files at the wrong place."
 		exit 1
-	elif [[ -z $(uname -a | grep -i "ubuntu") ]] || [[ -z $(uname -a | grep -i "debian") ]]; then
-		printf "\n${BRed}This script was only runs on for Debian and Ubuntu.${NC}\n"
+	elif [[ ${ID} == "ubuntu" ]]; then
+		printf "${Notiz}Updating the system.\n"
+		sudo apt update -y && sudo apt upgrade -y
+	elif [[ ${ID} == "debian" ]]; then
+		printf "${Notiz}Updating the system.\n"
+		sudo apt update -y && sudo apt upgrade -y
+	else
+		printf "${BRed}This script only runs on Debian and Ubuntu-Systems.${NC}\n"
 		exit 2
 	fi
-	printf "${Notiz}Updating the system.\n"
-	sudo apt update -y && sudo apt upgrade -y
 }
 
 setup_ufw() {
@@ -220,8 +224,8 @@ BRed='\033[1;31m'
 BYellow='\033[1;33m'
 BPurple='\033[1;35m'
 BGreen='\033[1;32m'
-Notiz="\n${BYellow}Note: ${NC}"
-System="\n${BPurple}Warning: ${NC}"
+Notiz="${BYellow}Note: ${NC}"
+System="${BPurple}Warning: ${NC}"
 
 scriptname=$0
 ufw_allow="[DEFAULT-NET]
