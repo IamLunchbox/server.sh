@@ -91,8 +91,13 @@ harden_pam() {
 		sudo cp --archive "/etc/pam.d/common-password" /etc/pam.d/common-password-COPY-$(date +"%Y%m%d%H%M%S")
 		echo "password    required    pam_pwquality.so" | sudo tee -a /etc/pam.d/common-password 1>/dev/null
 	fi
-	echo "${pam-passwd-config}" | sudo tee "/etc/security/pwquality.conf.d/99-difficult-passwords.conf" 1>/dev/null
-	printf "${Notiz}Set up default difficult passwords for any application using pam-common-password\n${NC}"
+	while IFS= read -r entry; do
+		if [[ ! $(grep "${entry}" /etc/security/pwquality.conf.d/99-difficult-passwords.conf) ]]; then
+			echo "${entry}" | sudo tee -a "/etc/security/pwquality.conf.d/99-difficult-passwords.conf" 1>/dev/null
+		fi
+	done <<< ${pam_passwd_config}
+	printf "${Notiz}Set up default difficult passwords for any application using pam-common-password\n\
+Please change your password.\n${NC}"
 }
 
 enable_auto_upgrades() {
@@ -109,9 +114,11 @@ change_umask() {
 	case ${SHELL} in
 		"/usr/bin/bash"|"/bin/bash")
 		# Skipping any overwrites if a default umask is already set in bashrc and /etc/profile
-			if [[ ! $(grep "umask" /etc/profile) ]]; then
-				printf "${Notiz}Entering the default umask 0027 into /etc/profile\n${NC}"
-				echo "umask 0027" | sudo tee -a "/etc/profile" 1>/dev/null
+			if [[ ! -e /etc/profile.d/harden.sh ]]; then
+				printf "${Notiz}Entering the default umask 0027 into /etc/profile.d/umask.sh\n${NC}"
+				echo "umask 0027" | sudo tee "/etc/profile.d/umask.sh" 1>/dev/null
+				sudo chown root:root /etc/profile.d/umask.sh
+				sudo chmod 644 /etc/profile.d/umask.sh
 			fi
 			if [[ ! $(grep "umask" ${HOME}/.bashrc) ]]; then
 				printf "${Notiz}Entering the default umask 0027 into ${HOME}/.bashrc\n${NC}"
@@ -151,16 +158,20 @@ secure_mount() {
 	case ${SHELL} in
 		"/usr/bin/bash"|"/bin/bash")
 		# Skipping any overwrites if a default umask is already set in bashrc and /etc/profile
-			if [[ ! $(grep "mount -o noexec,nosuid" /etc/profile) ]]; then
-				echo 'alias mount="mount -o noexec,nosuid"' | sudo tee -a /etc/profile 1>/dev/null
-				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/profile\n${NC}"
+			if [[ ! -d /etc/profile ]]; then
+				printf "${Notiz}/etc/profile was not on your system. Skipping."
+			elif [[ ! $(grep "mount -o noexec,nosuid" /etc/profile.d/harden.sh) ]]; then
+				echo 'alias mount="mount -o noexec,nosuid"' | sudo tee -a /etc/profile.d/harden.sh 1>/dev/null
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/profile.d/harden.sh\n${NC}"
 			elif [[ $(grep "mount -o noexec,nosuid" /etc/profile) ]]; then
-				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in /etc/profile${NC}"
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in /etc/profile.d/harden.sh${NC}"
 			else
 				printf "${System}An error ocurred.Exiting"
 				exit 10
 			fi
-			if [[ ! $(grep "mount -o noexec,nosuid" ${HOME}/.bashrc) ]]; then
+			if [[ ! -f ${HOME}/.bashrc ]]; then
+				printf "${Notiz}${HOME}/.bashrc was not on your system. Skipping."
+			elif [[ ! $(grep "mount -o noexec,nosuid" ${HOME}/.bashrc) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' >> ${HOME}/.bashrc
 				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into ${HOME}/.bashrc\n${NC}"
 			elif [[ $(grep "mount -o noexec,nosuid" ${HOME}/.bashrc) ]]; then
@@ -172,27 +183,31 @@ secure_mount() {
 			;;
 		"/usr/bin/zsh"|"/bin/zsh")
 		# Skipping any overwrites if a default value is already set in zshrc and /etc/zsh/zshenv
-			if [[ ! $(grep "mount -o noexec,nosuid" /etc/zsh/zshenv) ]]; then
+			if [[ ! -d /etc/zsh ]]; then
+				printf "${Notiz}/etc/zsh was not on your system. Skipping.\n"
+			elif [[ ! $(grep "mount -o noexec,nosuid" /etc/zsh/zshenv) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' | sudo tee -a /etc/zsh/zshenv 1>/dev/null
 				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/zshenv\n${NC}"
 			elif [[ $(grep "mount -o noexec,nosuid" /etc/zsh/zshenv) ]]; then
 				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in /etc/zshenv\n${NC}"
 			else
-				printf "${System}An error ocurred.Exiting"
+				printf "${System}An error ocurred.Exiting\n"
 				exit 11
 			fi
-			if [[ ! $(grep "mount -o noexec,nosuid" ${HOME}/.zshrc) ]]; then
+			if [[ ! -f ${HOME}/.zshrc ]]; then
+				printf "${Notiz}${HOME}/.zshrc was not on your system. Skipping.\n"
+			elif [[ ! $(grep "mount -o noexec,nosuid" ${HOME}/.zshrc) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' >> "${HOME}/.zshrc"
 				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into ${HOME}/.zshrc\n${NC}"
 			elif [[ $(grep "mount -o noexec,nosuid" ${HOME}/.zshrc) ]]; then
 				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in ${HOME}/.zshrc\n${NC}"
 			else
-				printf "${System}An error ocurred.Exiting"
+				printf "${System}An error ocurred.Exiting\n"
 				exit 12
 			fi
 			;;
 		*)
-			printf "${BRed}Could not set alias mount=\"mount -o noexec,nosuid\" since ${SHELL} is not supported!\n${NC}"
+			printf "${BRed}Could not set alias mount=\"mount -o noexec,nosuid\" since ${SHELL} is not supported!${NC}"
 			;;
 	esac
 	if [[ ! $(systemctl status udisks2.service | grep "Loaded: masked (Reason: Unit udisks2.service is masked.)") ]]; then
@@ -201,25 +216,27 @@ secure_mount() {
 		sudo systemctl mask udisks2.service
 	fi
 	# Add to /etc/modprobe.d/fs-blacklist.conf:
-	for i in ${filesystem_blacklist}; do
+	while IFS= read -r i; do
 		if [[ ! -f /etc/blacklist-custom.conf ]]; then
 			printf "${Notiz}Blacklisting filesystem driver ${i}, because he is usually not needed.\n"
 			echo "${i}" | sudo tee /etc/blacklist-custom.conf 1>/dev/null
-		elif [[ ! $(grep "${i}" /etc/blacklist-custom.conf) ]]; then
+		elif [[ ! $(sudo grep "${i}" /etc/blacklist-custom.conf) ]]; then
 			printf "${Notiz}Blacklisting filesystem driver ${i}, because he is usually not needed.\n"
 			echo "${i}" | sudo tee -a /etc/blacklist-custom.conf 1>/dev/null
 		fi
-	done
+	done <<< "${filesystem_blacklist}"
 }
 
 cap_check() {
 	printf "${Notiz}Showing now all your files with additional capabilities\n"
 	getcap -r / 2>/dev/null
 	# disabling exit on error for find, since there will permission errors, which would stop the script
+	printf "${Notiz}Done showing files with additional capabilities\n"
 	set +e
 	printf "${Notiz}Showing now all your files with the suid-bit set\n"
 	find / -perm /4000 2>/dev/null
 	set -e
+	printf "${Notiz}Done showing files with the suid-bit set\n"
 }
 
 
@@ -308,9 +325,9 @@ case ${command} in
 	enable_auto_upgrades
 	change_umask
 	secure_important_dirs
-	cap_check
 	secure_mount
 	misc_hardening
+	cap_check
 	version
 	;;
 
@@ -320,10 +337,10 @@ case ${command} in
 	harden_pam
 	enable_auto_upgrades
 	change_umask
-	cap_check
 	secure_important_dirs
 	secure_mount
 	misc_hardening
+	cap_check
 	version
 	;;
 
