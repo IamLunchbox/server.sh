@@ -28,12 +28,13 @@ setup_ufw() {
 	if [[ -n "${SSH_CONNECTION}" ]]; then
 		ssh-port=$(echo $SSH_CONNECTION | cut -d " " -f 4)
 		sudo ufw allow in ${ssh-port}/tcp comment "allow ssh in from your current ssh-port"
+		printf "${Notiz}Detected a ssh connection and allowed its port.\n${NC}"
 	elif [[ -n "${SSH_CLIENT}" ]]; then
 			ssh-port=$(echo $SSH_CLIENT | cut -d " " -f 3)
 			sudo ufw allow in ${ssh-port}/tcp comment "allow ssh in from your current ssh-port"
 	elif [[ -n "${SSH_TTY}" ]]; then
 		printf "${Notiz}Detected a ssh connection, but could not determine a port. Aborting ufw setup.\n${NC}"
-		return false
+		exit 5
 	fi
 	set -u
 
@@ -109,11 +110,11 @@ change_umask() {
 		"/usr/bin/bash"|"/bin/bash")
 		# Skipping any overwrites if a default umask is already set in bashrc and /etc/profile
 			if [[ ! $(grep "umask" /etc/profile) ]]; then
-				printf "${Notiz}Entering the default umask 0027 into /etc/profile${NC}"
+				printf "${Notiz}Entering the default umask 0027 into /etc/profile\n${NC}"
 				echo "umask 0027" | sudo tee -a "/etc/profile" 1>/dev/null
 			fi
 			if [[ ! $(grep "umask" ${HOME}/.bashrc) ]]; then
-				printf "${Notiz}Entering the default umask 0027 into ${HOME}/.bashrc${NC}"
+				printf "${Notiz}Entering the default umask 0027 into ${HOME}/.bashrc\n${NC}"
 				echo "umask 0027" >> ${HOME}/.bashrc
 			fi
 			;;
@@ -121,11 +122,11 @@ change_umask() {
 		"/usr/bin/zsh"|"/bin/zsh")
 		# Skipping any overwrites if a default value is already set in zshrc and /etc/zsh/zshenv
 			if [[ ! $(grep "umask" /etc/zsh/zshenv) ]]; then
-				printf "${Notiz}Entering the default umask 0027 into /etc/zshenv${NC}"
+				printf "${Notiz}Entering the default umask 0027 into /etc/zshenv\n${NC}"
 				echo "umask 0027" | sudo tee -a /etc/zsh/zshenv 1>/dev/null
 			fi
 			if [[ ! $(grep "umask" ${HOME}/.zshrc) ]]; then
-				printf "${Notiz}Entering the default umask 0027 into ${HOME}/.zshrc${NC}"
+				printf "${Notiz}Entering the default umask 0027 into ${HOME}/.zshrc\n${NC}"
 				echo "umask 0027" >> ${HOME}/.zshrc
 			fi
 			;;
@@ -139,7 +140,7 @@ change_umask() {
 secure_important_dirs(){
 	#todo
 	chmod 750 "${HOME}"
-	printf "${Notiz}The permission of ${HOME} was set to 750${NC}"
+	printf "${Notiz}The permission of ${HOME} was set to 750\n${NC}"
 	if [[ ! $(grep "proc     /proc     proc     defaults,hidepid=2     0     0" "/etc/fstab") ]]; then
 		sudo cp --archive /etc/fstab /etc/fstab-COPY-$(date +"%Y%m%d%H%M%S")
 		echo -e "\nproc     /proc     proc     defaults,hidepid=2     0     0         # added by $(whoami) on $(date +"%Y-%m-%d @ %H:%M:%S")" | sudo tee -a /etc/fstab 1>/dev/null
@@ -152,22 +153,42 @@ secure_mount() {
 		# Skipping any overwrites if a default umask is already set in bashrc and /etc/profile
 			if [[ ! $(grep "mount -o noexec,nosuid" /etc/profile) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' | sudo tee -a /etc/profile 1>/dev/null
-				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/profile${NC}"
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/profile\n${NC}"
+			elif [[ $(grep "mount -o noexec,nosuid" /etc/profile) ]]; then
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in /etc/profile${NC}"
+			else
+				printf "${System}An error ocurred.Exiting"
+				exit 10
 			fi
 			if [[ ! $(grep "mount -o noexec,nosuid" ${HOME}/.bashrc) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' >> ${HOME}/.bashrc
-				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into ${HOME}/.bashrc${NC}"
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into ${HOME}/.bashrc\n${NC}"
+			elif [[ $(grep "mount -o noexec,nosuid" ${HOME}/.bashrc) ]]; then
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in ${HOME}/.bashrc\n${NC}"
+			else
+				printf "${System}An error ocurred.Exiting"
+				exit 11
 			fi
 			;;
 		"/usr/bin/zsh"|"/bin/zsh")
 		# Skipping any overwrites if a default value is already set in zshrc and /etc/zsh/zshenv
 			if [[ ! $(grep "mount -o noexec,nosuid" /etc/zsh/zshenv) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' | sudo tee -a /etc/zsh/zshenv 1>/dev/null
-				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/zshenv${NC}"
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into /etc/zshenv\n${NC}"
+			elif [[ $(grep "mount -o noexec,nosuid" /etc/zsh/zshenv) ]]; then
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in /etc/zshenv\n${NC}"
+			else
+				printf "${System}An error ocurred.Exiting"
+				exit 11
 			fi
 			if [[ ! $(grep "mount -o noexec,nosuid" ${HOME}/.zshrc) ]]; then
 				echo 'alias mount="mount -o noexec,nosuid"' >> "${HOME}/.zshrc"
-				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into ${HOME}/.zshrc${NC}"
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was entered into ${HOME}/.zshrc\n${NC}"
+			elif [[ $(grep "mount -o noexec,nosuid" ${HOME}/.zshrc) ]]; then
+				printf "${Notiz}The alias mount=\"mount -o noexec,nosuid\" was already present in ${HOME}/.zshrc\n${NC}"
+			else
+				printf "${System}An error ocurred.Exiting"
+				exit 12
 			fi
 			;;
 		*)
@@ -206,10 +227,7 @@ misc_hardening() {
 }
 
 version(){
-	#todo
-	if [[ false ]]; then
-		echo "this is a placeholder"
-	fi
+	printf "${Notiz}All commands exited without errors. Your system was set up with ${scriptname} version ${version}.\n${NC}"
 }
 
 #sets $NAME, $VERSION, $ID, $ID_LIKE, $VERSION_CODENAME and $UBUNTU_CODENAME
@@ -226,7 +244,7 @@ BPurple='\033[1;35m'
 BGreen='\033[1;32m'
 Notiz="${BYellow}Note: ${NC}"
 System="${BPurple}Warning: ${NC}"
-
+version="1.0"
 scriptname=$0
 ufw_allow="[DEFAULT-NET]
 title=DEFAULT-NET
@@ -281,6 +299,7 @@ case ${command} in
 	secure_important_dirs
 	secure_mount
 	misc_hardening
+	version
 	;;
 
 	"server")
@@ -292,6 +311,7 @@ case ${command} in
 	secure_important_dirs
 	secure_mount
 	misc_hardening
+	version
 	;;
 
 	*)
