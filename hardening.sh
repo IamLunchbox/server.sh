@@ -203,14 +203,22 @@ secure_mount() {
 	# Add to /etc/modprobe.d/fs-blacklist.conf:
 	for i in ${filesystem_blacklist}; do
 		if [[ ! -f /etc/blacklist-custom.conf ]]; then
-			printf "${Notiz}Blacklisting filesystem driver ${i}, because he is usually not needed.\n${NC}"
+			printf "${Notiz}Blacklisting filesystem driver ${i}, because he is usually not needed.\n"
 			echo "${i}" | sudo tee /etc/blacklist-custom.conf 1>/dev/null
 		elif [[ ! $(grep "${i}" /etc/blacklist-custom.conf) ]]; then
-			printf "${Notiz}Blacklisting filesystem driver ${i}, because he is usually not needed.\n${NC}"
+			printf "${Notiz}Blacklisting filesystem driver ${i}, because he is usually not needed.\n"
 			echo "${i}" | sudo tee -a /etc/blacklist-custom.conf 1>/dev/null
 		fi
 	done
 }
+
+cap_check() {
+	printf "${Notiz}Showing now all your files with additional capabilities\n"
+	getcap -r / 2>/dev/null
+	printf "${Notiz}Showing now all your files with the suid-bit set\n"
+	find / -perm /4000 2>/dev/null
+}
+
 
 misc_hardening() {
 	# Add to /etc/sysctl.d/local.conf:
@@ -297,6 +305,7 @@ case ${command} in
 	enable_auto_upgrades
 	change_umask
 	secure_important_dirs
+	cap_check
 	secure_mount
 	misc_hardening
 	version
@@ -308,6 +317,7 @@ case ${command} in
 	harden_pam
 	enable_auto_upgrades
 	change_umask
+	cap_check
 	secure_important_dirs
 	secure_mount
 	misc_hardening
