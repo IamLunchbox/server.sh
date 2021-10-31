@@ -215,8 +215,11 @@ secure_mount() {
 cap_check() {
 	printf "${Notiz}Showing now all your files with additional capabilities\n"
 	getcap -r / 2>/dev/null
+	# disabling exit on error for find, since there will permission errors, which would stop the script
+	set +e
 	printf "${Notiz}Showing now all your files with the suid-bit set\n"
 	find / -perm /4000 2>/dev/null
+	set -e
 }
 
 
