@@ -1,31 +1,75 @@
 #!/usr/bin/env bash
 set -u -o pipefail
 
-## To-do
-- Deploy an .env-file and source it from this script, so this script can be updated independently. 
-- move this script to a different repo and set a specific repo and set a gitignore, making sure the env-file wont be distributed
-- move a level above the docker-directories to archive less directories
+## set these variables in an .env-file within this directory
+#service_path=""
+#services=("")
+#backup_location=""
+#user=""
+#additional_dirs=("")
+#post_exec_cmd=""
 
-## set these - right now they are empty and the script will fail due to unset vars =)
-docker_path=
-services=()
-nfs_share=
-user=
-additional_dirs=("")
-## default vars
-starting_point="$(pwd)"
-backup_dir="docker-backup-$(date +%s)"
-backup_path="$(realpath ${nfs_share})/${backup_dir}"
+## default vars  
 help="$0 run|dry-run
 A small helper script to backup a docker-compose directory to an nfs share.
 "
+alias realpath="realpath -e"
 
-##checks for vailidity of settings
+prepare() {
+if [[ -d "${nfs_share}" ]] && [[ $(mount -l | grep "${nfs_share}") ]]; then
+  sudo -u ${user} rm -rf "${nfs_share}"/*
+  sudo -u ${user} mkdir "${backup_path}"
+else
+  echo "Either your backup location does not exist or is not mounted. Exiting."
+  exit 2
+fi
+
+if [[ ! -f "./.env" ]]; then
+  echo "You did not provide a necessary environment file. Exiting."
+  exit 3
+else
+  source "./.env"
+  starting_point="$(pwd)"
+  backup_dir="backup-$(date +%s)"
+  backup_path="$(realpath "${backup_location}")/${backup_dir}"
+fi
+
 if [[ ${#services[@]} -lt 1 ]]; then
   echo "You have given no services to backup."
   echo "$help"
   exit 1
 fi
+
+
+}
+
+docker_backup() {
+for service in ${services[@]}; do
+    servicepath="$(realpath "${service_path}")/${service}"
+    cd $servicepath
+    docker-compose down
+    cd ..
+    tar -cpz --acls --xattrs -f - "${service}" | sudo -u ${user} tee "${backup_path}"/"${service}".tar.gz 1>/dev/null
+done <<< "${services}"
+
+for service in ${services[@]}; do
+  servicepath="$(realpath "${service_path}")/${service}"
+  cd $servicepath
+  docker-compose up -d
+done <<< "${services}"
+}
+
+
+additional_backups() {
+if [[ ${#additional_dirs[@]} -gt 0 ]]; then
+for directory in ${additional_dirs[@]}; do
+  cd "${directory}"
+  cd ..
+  tar -cpz --acls --xattrs -f - "$(realpath --relative-to="$(pwd)" "$directory")" | sudo -u ${user} tee "${backup_path}"/"$(realpath --relative-to="$(pwd)" "${directory}")".tar.gz 1>/dev/null
+done <<< "${additional_dirs}"
+fi
+}
+
 
 if [[ $# = 1 ]]; then
   case $1 in
@@ -43,31 +87,12 @@ else
   exit 0
 fi
 
-if [[ -d /etc/nginx ]]; then
-  additional_dirs+="/etc/nginx"
-fi
-## run
+prepare
+docker_backup
+additional_backups
 
-
-
-if [[ -d ${nfs_share} ]] && [[ $(mount -l | grep "${nfs_share}") ]]; then
-  sudo -u ${user} rm -rf ${nfs_share}/*
-  sudo -u ${user} mkdir ${backup_path}
-  for service in ${services[@]}; do
-    servicepath="$(realpath ${docker_path})/${service}"
-    cd $servicepath
-    docker-compose down
-    tar -cpz --acls --xattrs -f - $servicepath ${additional_dirs[@]} | sudo -u ${user} tee ${backup_path}/${service}.tar.gz 1>/dev/null
-  done <<< "${services}"
-
-  for service in ${services[@]}; do
-    servicepath="$(realpath ${docker_path})/${service}"
-    cd $servicepath
-    docker-compose up -d
-  done <<< "${services}"
-else
-  echo "The backup-directory does not seem to exist or is not mounted right now."
-  exit 1
+if [[ ${#post_exec_cmd} -gt 0 ]]; then
+  bash -c "${post_exec_cmd}"
 fi
 
 exit 0
