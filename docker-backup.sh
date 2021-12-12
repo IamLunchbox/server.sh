@@ -1,37 +1,28 @@
 #!/usr/bin/env bash
 set -u -o pipefail
 
-## set these variables in an .env-file within this directory
-#service_path=""
-#services=("")
-#backup_location=""
-#user=""
-#additional_dirs=("")
-#post_exec_cmd=""
-
-## default vars  
+## default vars
 help="$0 run|dry-run
 A small helper script to backup a docker-compose directory to an nfs share.
 "
 alias realpath="realpath -e"
 
 prepare() {
-if [[ -d "${nfs_share}" ]] && [[ $(mount -l | grep "${nfs_share}") ]]; then
-  sudo -u ${user} rm -rf "${nfs_share}"/*
+if [[ ! -f "./docker-backup.env" ]]; then
+  echo "You did not provide a necessary environment file. Exiting."
+  exit 3
+else
+  source "./docker-backup.env"
+  starting_point="$(pwd)"
+  backup_dir="backup-$(date +%s)"
+  backup_path="$(realpath "${backup_location}")/${backup_dir}"
+fi
+if [[ -d "${backup_location}" ]] && [[ $(mount -l | grep "${backup_location}") ]]; then
+  sudo -u ${user} rm -rf "${backup_location}"/*
   sudo -u ${user} mkdir "${backup_path}"
 else
   echo "Either your backup location does not exist or is not mounted. Exiting."
   exit 2
-fi
-
-if [[ ! -f "./.env" ]]; then
-  echo "You did not provide a necessary environment file. Exiting."
-  exit 3
-else
-  source "./.env"
-  starting_point="$(pwd)"
-  backup_dir="backup-$(date +%s)"
-  backup_path="$(realpath "${backup_location}")/${backup_dir}"
 fi
 
 if [[ ${#services[@]} -lt 1 ]]; then
@@ -86,6 +77,10 @@ else
   echo "$help"
   exit 0
 fi
+
+exec 3>&1 4>&2
+trap 'exec 2>&4 1>&3' 0 1 2 3
+exec 1>docker-backup-$(date +%s).log 2>&1
 
 prepare
 docker_backup
