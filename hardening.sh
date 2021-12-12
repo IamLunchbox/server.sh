@@ -4,6 +4,9 @@ set -e -u -o pipefail
 # https://static.open-scap.org/ssg-guides/ssg-rhel7-guide-C2S.html
 # https://github.com/trimstray/linux-hardening-checklist
 
+##todo:
+# 
+
 compat_check() {
 	if [[ $UID == 0 ]]; then
 		printf "${BRed}Please use this script not as root, this will set \

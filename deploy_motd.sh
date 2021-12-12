@@ -7,6 +7,6 @@ if [[ ! -d ./motd ]]; then
 else
   sudo cp -i ./motd/* /etc/update-motd.d/
   if [[ $? -eq 0 ]]; then
-    echo "Did successfully copy the files to the destination :("
+    echo "Did successfully copy the files to the destination :)"
   fi
 fi

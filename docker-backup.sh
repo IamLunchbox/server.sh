@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 set -u -o pipefail
 
+#todo
+# set permission-checks to restrict the world from reading and editing
+
 ## default vars
 help="$0 run|dry-run
 A small helper script to backup a docker-compose directory to an nfs share.
 "
+scriptname="$0"
+
 alias realpath="realpath -e"
 
 prepare() {
 if [[ ! -f "./docker-backup.env" ]]; then
   echo "You did not provide a necessary environment file. Exiting."
-  exit 3
+  exit 1
 else
   source "./docker-backup.env"
   starting_point="$(pwd)"
@@ -25,10 +30,21 @@ else
   exit 2
 fi
 
-if [[ ${#services[@]} -lt 1 ]]; then
+if [[ ! $(id -u) == 0 ]]; then
+  echo "This script is intended for automated usage and needs to be run as root (as of now).
+Otherwise this script could not impersonate a given user."
+  exit 3
+
+elif [[ stat ${scriptname} ]]; then
+    exit 4
+
+elif [[ stat "docker-backup.env" ]]; then
+    exit 5
+
+elif [[ ${#services[@]} -lt 1 ]]; then
   echo "You have given no services to backup."
   echo "$help"
-  exit 1
+  exit 6
 fi
 
 
