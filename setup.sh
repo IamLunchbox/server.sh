@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e -u -o pipefail
 
+cmd=$1
+help=""
+
 confirmer() {
 while true; do
   echo $1
@@ -32,12 +35,24 @@ get_tools() {
 sudo apt install -y zsh zsh-autosuggestions zsh-syntax-highlighting git
 chsh -s /bin/zsh
 }
+
 set_prefs() {
 cd $HOME
 git clone https://github.com/IamLunchbox/dotfiles .dotfiles
 cd .dotfiles
 ./install
 }
+
+if [[ $# -lt 1 ]]; then
+  echo "You better give a command to execute"
+  echo "$help"
+  exit 1
+fi
+
+for var in $@; do
+  case $var in 
+    "help")
+
 
 prep
 get_tools
