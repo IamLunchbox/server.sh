@@ -31,12 +31,9 @@ elif [[ ! command -v sudo ]]; then
 fi
 }
 
-get_tools() {
+admin_tools() {
 sudo apt install -y zsh zsh-autosuggestions zsh-syntax-highlighting git
 chsh -s /bin/zsh
-}
-
-set_prefs() {
 cd $HOME
 git clone https://github.com/IamLunchbox/dotfiles .dotfiles
 cd .dotfiles
@@ -50,12 +47,26 @@ if [[ $# -lt 1 ]]; then
 fi
 
 for var in $@; do
-  case $var in 
-    "help")
-
+  if [[ $var =~ "[Hh]elp" ]]; then
+  echo "$help"
+  exit 0
+  fi
+done
 
 prep
-get_tools
-set_prefs
+
+for var in $@; do
+  case $var in 
+  "tools")
+    admin_tools
+    ;;
+  *)
+    echo "$help"
+    exit 1
+    ;;
+  esac
+done
+
+
 
 exit 0
