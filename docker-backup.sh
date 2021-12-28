@@ -8,7 +8,7 @@ set -u -o pipefail
 help="$0 run|dry-run
 A small helper script to backup a docker-compose directory to an nfs share."
 scriptname="$0"
-timestamp="[$(date +%F-%T]): "
+timestamp="[$(date +%F-%T]) "
 alias realpath="realpath -e"
 
 prepare() {
@@ -93,12 +93,17 @@ else
   exit 0
 fi
 
-prepare
-docker_backup
-additional_backups
+if [[ $(date +%H) = 1 ]]; then
+  prepare
+  docker_backup
+  additional_backups
 
-if [[ ${#post_exec_cmd} -gt 0 ]]; then
-  bash -c "${post_exec_cmd}"
+  if [[ ${#post_exec_cmd} -gt 0 ]]; then
+    bash -c "${post_exec_cmd}"
+  fi
+else
+  if [[ ${#post_exec_cmd} -gt 0 ]]; then
+    bash -c "${post_exec_cmd}"
+  fi
 fi
-
 exit 0
