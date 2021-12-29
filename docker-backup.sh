@@ -92,9 +92,8 @@ else
   echo "$help"
   exit 0
 fi
-
+prepare
 if [[ $(date +%H) = 1 ]]; then
-  prepare
   docker_backup
   additional_backups
 
