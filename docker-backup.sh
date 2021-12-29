@@ -98,12 +98,16 @@ if [[ $(date +%H) = 1 ]]; then
   docker_backup
   additional_backups
 
-  if [[ ${#post_exec_cmd} -gt 0 ]]; then
-    bash -c "${post_exec_cmd}"
+  if [[ ${#post_run_cmd} -gt 0 ]]; then
+    echo "${timestamp}Executing the post run command."
+    bash -c "${post_run_cmd}"
+    echo "${timestamp}Done."
   fi
 else
   if [[ ${#post_exec_cmd} -gt 0 ]]; then
+    echo "${timestamp}Executing the post execution-command."
     bash -c "${post_exec_cmd}"
+    echo "${timestamp}Done."
   fi
 fi
 exit 0
