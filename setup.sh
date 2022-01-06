@@ -32,13 +32,19 @@ fi
 }
 
 admin_tools() {
-sudo apt install -y zsh zsh-autosuggestions zsh-syntax-highlighting git
+sudo apt install -y zsh zsh-autosuggestions zsh-syntax-highlighting git curl
 chsh -s /bin/zsh
 cd $HOME
 git clone https://github.com/IamLunchbox/dotfiles .dotfiles
 cd .dotfiles
 ./install
+curl https://deb.releases.teleport.dev/teleport-pubkey.asc | sudo apt-key add -
+sudo add-apt-repository 'deb https://deb.releases.teleport.dev/ stable main'
+sudo apt-get update
+sudo apt install teleport
 }
+
+
 
 if [[ $# -lt 1 ]]; then
   echo "You better give a command to execute"
@@ -48,8 +54,8 @@ fi
 
 for var in $@; do
   if [[ $var =~ "[Hh]elp" ]]; then
-  echo "$help"
-  exit 0
+    echo "$help"
+    exit 0
   fi
 done
 
@@ -59,14 +65,12 @@ for var in $@; do
   case $var in 
   "tools")
     admin_tools
+    exit 0
     ;;
   *)
-    echo "$help"
+    echo "You entered a key, which does not exist"
     exit 1
     ;;
   esac
 done
 
-
-
-exit 0
